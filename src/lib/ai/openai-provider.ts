@@ -88,10 +88,18 @@ ${modeContext(input.mode)}
       target_change: 'ターゲットを全く別の層に変えてみる',
       monetize: '収益モデルを具体的に設計する',
       sns: 'SNSでバズる・シェアされる形に変換する',
-      naming: 'キャッチーで覚えやすい名前を考える',
+      naming: 'キャッチーで3秒で伝わる名前を考える',
       mvp: '最小限の機能で最速リリースできる形にする',
       lp: 'ランディングページの構成案として整理する',
       action: '具体的な実行ステップに変換する',
+      worldview: '独自の世界観やストーリーを付与する',
+      story: '物語として語れるストーリー構造を組み立てる',
+      character: 'マスコットやキャラクターを設定してブランド化する',
+      weakness_flip: '弱点や欠点を逆に最大の強みに変える',
+      subscription: 'サブスクリプション型の継続モデルに変換する',
+      ai_service: 'AI/自動化を軸にしたサービスとして再設計する',
+      cross_industry: '全く別の業界（飲食・医療・ゲーム等）に転用する',
+      broaden: '対象範囲を大きく広げて、より多くの人に届く形にする',
     };
 
     const actionDesc = actionLabels[input.action] || input.action;
