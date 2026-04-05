@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSessionStore } from '@/stores/session-store';
@@ -15,25 +15,27 @@ import { PERSPECTIVE_CARDS } from '@/lib/ai/perspective-cards';
 export default function SoloBrainstormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const {
     session, nodes, setSession, setNodes, setEdges, addNode, addEdge,
-    selectedNodeId, selectNode, isGenerating, setIsGenerating, edges,
+    selectedNodeId, selectNode, isGenerating, setIsGenerating,
   } = useSessionStore();
 
   const [loading, setLoading] = useState(true);
   const [showPerspective, setShowPerspective] = useState(false);
-  const [initialGenerated, setInitialGenerated] = useState(false);
+  const [error, setError] = useState('');
+  const initialGeneratedRef = useRef(false);
 
   useEffect(() => {
     async function loadSession() {
-      const { data: sessionData } = await supabase
+      const { data: sessionData, error: sessionError } = await supabase
         .from('brainstorm_sessions')
         .select('*')
         .eq('id', sessionId)
         .single();
 
-      if (!sessionData) {
+      if (sessionError || !sessionData) {
+        console.error('Failed to load session:', sessionError);
         router.push('/dashboard');
         return;
       }
@@ -55,22 +57,23 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
       setLoading(false);
 
       if (nodesData && nodesData.length > 0) {
-        setInitialGenerated(true);
+        initialGeneratedRef.current = true;
       }
     }
 
     loadSession();
-  }, [sessionId, supabase, router, setSession, setNodes, setEdges]);
+  }, [sessionId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!session || initialGenerated || loading || nodes.length > 0) return;
+    if (!session || initialGeneratedRef.current || loading || nodes.length > 0) return;
+    initialGeneratedRef.current = true;
     generateInitialIdeas();
-    setInitialGenerated(true);
-  }, [session, initialGenerated, loading, nodes.length]);
+  }, [session, loading, nodes.length]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateInitialIdeas = useCallback(async () => {
     if (!session) return;
     setIsGenerating(true);
+    setError('');
 
     try {
       const res = await fetch('/api/ai', {
@@ -88,7 +91,16 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
         }),
       });
 
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `API error: ${res.status}`);
+      }
+
       const { result: ideas } = await res.json();
+      if (!ideas || !Array.isArray(ideas)) {
+        throw new Error('Invalid AI response');
+      }
+
       const centerX = 400;
       const centerY = 250;
       const radius = 180;
@@ -118,14 +130,18 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
         await new Promise(resolve => setTimeout(resolve, 200));
         addNode(newNode);
 
-        await supabase.from('idea_nodes').insert(newNode);
+        const { error: insertError } = await supabase.from('idea_nodes').insert(newNode);
+        if (insertError) {
+          console.error('Failed to save node:', insertError);
+        }
       }
     } catch (e) {
       console.error('Failed to generate initial ideas:', e);
+      setError(e instanceof Error ? e.message : 'アイディア生成に失敗しました');
     } finally {
       setIsGenerating(false);
     }
-  }, [session, addNode, setIsGenerating, supabase]);
+  }, [session]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDerive = useCallback(async (deriveAction: string) => {
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
@@ -147,6 +163,7 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
         }),
       });
 
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const { result: idea } = await res.json();
 
       const offsetX = (Math.random() - 0.5) * 120;
@@ -182,14 +199,13 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
 
       addEdge(newEdge);
       await supabase.from('idea_edges').insert(newEdge);
-
       selectNode(newNode.id);
     } catch (e) {
       console.error('Failed to derive idea:', e);
     } finally {
       setIsGenerating(false);
     }
-  }, [nodes, selectedNodeId, session, addNode, addEdge, selectNode, setIsGenerating, supabase]);
+  }, [nodes, selectedNodeId, session]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePerspective = useCallback(() => {
     if (!selectedNodeId) return;
@@ -219,6 +235,7 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
         }),
       });
 
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const { result: idea } = await res.json();
 
       const newNode: IdeaNode = {
@@ -251,14 +268,13 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
 
       addEdge(newEdge);
       await supabase.from('idea_edges').insert(newEdge);
-
       selectNode(newNode.id);
     } catch (e) {
       console.error('Failed to apply perspective:', e);
     } finally {
       setIsGenerating(false);
     }
-  }, [nodes, selectedNodeId, session, addNode, addEdge, selectNode, setIsGenerating, supabase]);
+  }, [nodes, selectedNodeId, session]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRescue = useCallback(async (rescueType: string) => {
     if (!session) return;
@@ -278,6 +294,7 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
         }),
       });
 
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const { result: ideas } = await res.json();
 
       for (let i = 0; i < ideas.length; i++) {
@@ -307,7 +324,7 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
     } finally {
       setIsGenerating(false);
     }
-  }, [session, nodes, addNode, setIsGenerating, supabase]);
+  }, [session, nodes]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddManualNode = useCallback(async (title: string) => {
     if (!session) return;
@@ -332,7 +349,7 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
     addNode(newNode);
     await supabase.from('idea_nodes').insert(newNode);
     selectNode(newNode.id);
-  }, [session, addNode, selectNode, supabase]);
+  }, [session]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
 
@@ -352,7 +369,14 @@ export default function SoloBrainstormPage({ params }: { params: Promise<{ id: s
   return (
     <div className="h-screen flex overflow-hidden">
       <SessionSidebar session={session} nodeCount={nodes.length} />
-      <BrainstormCanvas onAddManualNode={handleAddManualNode} />
+      <div className="flex-1 flex flex-col relative">
+        {error && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm shadow-lg">
+            ⚠️ {error}
+          </div>
+        )}
+        <BrainstormCanvas onAddManualNode={handleAddManualNode} />
+      </div>
       <ActionPanel
         selectedNode={selectedNode}
         onDerive={handleDerive}

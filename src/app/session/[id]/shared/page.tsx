@@ -63,9 +63,9 @@ export default function SharedSessionPage({ params }: { params: Promise<{ id: st
     const channel = supabase
       .channel(`shared-session-${sessionId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'idea_nodes', filter: `session_id=eq.${sessionId}` },
-        (payload) => { addNode(payload.new as IdeaNode); })
+        (payload: { new: unknown }) => { addNode(payload.new as IdeaNode); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'participant_inputs', filter: `session_id=eq.${sessionId}` },
-        (payload) => { addInput(payload.new as ParticipantInput); })
+        (payload: { new: unknown }) => { addInput(payload.new as ParticipantInput); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

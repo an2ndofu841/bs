@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,13 +16,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const loadSessions = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('brainstorm_sessions')
       .select('*')
       .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to load sessions:', error);
+    }
     setSessions(data || []);
     setLoading(false);
   }, [supabase]);

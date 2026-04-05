@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -15,6 +15,7 @@ function NewSessionForm() {
   const searchParams = useSearchParams();
   const defaultType = (searchParams.get('type') as SessionType) || 'solo';
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [theme, setTheme] = useState('');
   const [goal, setGoal] = useState('');
@@ -25,48 +26,67 @@ function NewSessionForm() {
   const [sessionType, setSessionType] = useState<SessionType>(defaultType);
   const [loading, setLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('ログインが必要です。再度ログインしてください。');
+        setLoading(false);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from('brainstorm_sessions')
-      .insert({
-        user_id: user.id,
-        title: theme,
-        theme,
-        goal,
-        target: target || null,
-        constraints: constraints || null,
-        avoid_rules: avoidRules || null,
-        mode,
-        session_type: sessionType,
-        status: 'active',
-        share_code: sessionType === 'shared' ? generateShareCode() : null,
-      })
-      .select()
-      .single();
+      const { data, error: insertError } = await supabase
+        .from('brainstorm_sessions')
+        .insert({
+          user_id: user.id,
+          title: theme,
+          theme,
+          goal,
+          target: target || null,
+          constraints: constraints || null,
+          avoid_rules: avoidRules || null,
+          mode,
+          session_type: sessionType,
+          status: 'active',
+          share_code: sessionType === 'shared' ? generateShareCode() : null,
+        })
+        .select()
+        .single();
 
-    if (error || !data) {
+      if (insertError) {
+        console.error('Session creation error:', insertError);
+        setError(`セッション作成に失敗しました: ${insertError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setError('セッションの作成に失敗しました。再度お試しください。');
+        setLoading(false);
+        return;
+      }
+
+      if (sessionType === 'shared') {
+        await supabase.from('session_participants').insert({
+          session_id: data.id,
+          user_id: user.id,
+          display_name: user.email?.split('@')[0] || 'ファシリテーター',
+          role: 'facilitator',
+        });
+      }
+
+      router.push(`/session/${data.id}/solo`);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('予期しないエラーが発生しました。');
       setLoading(false);
-      return;
     }
-
-    if (sessionType === 'shared') {
-      await supabase.from('session_participants').insert({
-        session_id: data.id,
-        user_id: user.id,
-        display_name: user.email?.split('@')[0] || 'ファシリテーター',
-        role: 'facilitator',
-      });
-    }
-
-    router.push(`/session/${data.id}/solo`);
   }
 
   return (
@@ -202,6 +222,12 @@ function NewSessionForm() {
           </motion.button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+          ⚠️ {error}
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
         <Link href="/dashboard">

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAIProvider } from '@/lib/ai';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, ...params } = body;
-    const ai = getAIProvider();
 
+    if (!action) {
+      return NextResponse.json({ error: 'Missing action' }, { status: 400 });
+    }
+
+    const ai = getAIProvider();
     let result: unknown;
 
     switch (action) {
@@ -39,14 +45,15 @@ export async function POST(request: NextRequest) {
         result = await ai.generateMeetingSummary(params);
         break;
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
 
     return NextResponse.json({ result });
   } catch (error) {
-    console.error('AI API error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('AI API error:', message, error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `AI processing failed: ${message}` },
       { status: 500 }
     );
   }
