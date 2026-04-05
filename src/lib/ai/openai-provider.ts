@@ -39,14 +39,20 @@ function parseJSON<T>(text: string): T {
   return JSON.parse(jsonStr);
 }
 
+const REASONING_MODELS = ['o1', 'o1-mini', 'o1-preview', 'o3', 'o3-mini', 'o4-mini'];
+
 async function chat(openai: OpenAI, userPrompt: string, model: string): Promise<string> {
+  const isReasoning = REASONING_MODELS.some(m => model.startsWith(m));
+
   const res = await openai.chat.completions.create({
     model,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.9,
+    messages: isReasoning
+      ? [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userPrompt}` }]
+      : [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+    ...(isReasoning ? {} : { temperature: 0.9 }),
     max_completion_tokens: 2000,
   });
   return res.choices[0]?.message?.content || '';
