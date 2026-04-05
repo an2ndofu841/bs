@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-brand-50: #f0f4ff;
+  --color-brand-100: #dbe4ff;
+  --color-brand-200: #bac8ff;
+  --color-brand-300: #91a7ff;
+  --color-brand-400: #748ffc;
+  --color-brand-500: #5c7cfa;
+  --color-brand-600: #4c6ef5;
+  --color-brand-700: #4263eb;
+  --color-brand-800: #3b5bdb;
+  --color-brand-900: #364fc7;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-accent-400: #ffa94d;
+  --color-accent-500: #ff922b;
+  --color-accent-600: #fd7e14;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface: #fafbfc;
+  --color-surface-raised: #ffffff;
+  --color-surface-overlay: rgba(0, 0, 0, 0.5);
+
+  --color-canvas-bg: #f8f9fc;
+  --color-canvas-grid: #e9ecf0;
+
+  --color-seed: #51cf66;
+  --color-sprout: #40c057;
+  --color-idea-card: #fab005;
+  --color-action-plan: #339af0;
+
+  --font-family-display: 'Geist', system-ui, sans-serif;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-card-active: 0 12px 32px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-display);
+  background: var(--color-surface);
+  color: #1a1a2e;
+}
+
+.canvas-grid {
+  background-image:
+    radial-gradient(circle, var(--color-canvas-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.idea-node-seed {
+  background: linear-gradient(135deg, #d3f9d8, #b2f2bb);
+  border: 2px solid #69db7c;
+}
+
+.idea-node-sprout {
+  background: linear-gradient(135deg, #c3fae8, #96f2d7);
+  border: 2px solid #38d9a9;
+}
+
+.idea-node-card {
+  background: linear-gradient(135deg, #fff3bf, #ffe066);
+  border: 2px solid #fcc419;
+}
+
+.idea-node-action_plan {
+  background: linear-gradient(135deg, #d0ebff, #a5d8ff);
+  border: 2px solid #4dabf7;
+}
+
+@keyframes node-appear {
+  0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+  50% { transform: scale(1.1) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92, 124, 250, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(92, 124, 250, 0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-node-appear {
+  animation: node-appear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
